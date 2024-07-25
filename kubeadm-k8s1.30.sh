@@ -2,7 +2,7 @@
 
 # install packages
 sudo apt-get update -y
-sudo apt-get install -y apt-transport-https ca-certificates curl
+sudo apt-get install -y apt-transport-https ca-certificates curl gpg
 
 sudo mkdir -p /etc/apt/keyrings
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
@@ -10,6 +10,7 @@ echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.
 
 sudo apt-get update -y
 sudo apt-get install -y kubelet kubeadm kubectl containerd
+sudo systemctl enable --now kubelet
 sudo apt-mark hold kubelet kubeadm kubectl
 
 
@@ -21,10 +22,15 @@ modprobe br_netfilter
 modprobe overlay
 
 
-# enable packet forwarding, enable packets crossing a bridge are sent to iptables for processing
-echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
-echo "net.bridge.bridge-nf-call-iptables=1" >> /etc/sysctl.conf
-sysctl -p /etc/sysctl.conf
+# sysctl params required by setup, params persist across reboots
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.ipv4.ip_forward = 1
+EOF
+
+# Apply sysctl params without reboot
+sudo sysctl --system
+
+sysctl net.ipv4.ip_forward
 
 
 # return to user
